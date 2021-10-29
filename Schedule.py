@@ -193,7 +193,7 @@ def find_open_shift(schedule):
         # check if hours for shifts are at max
         if hours_for_shift/4 < MaxEmployeesPerShift[j%4]:
             for i in range(len(schedule)):# for employee
-                print(f"Checking row {i} col {j}...")
+                #print(f"Checking row {i} col {j}...")
                 # Check if find available shift. Return index of shift
                 if i == len(schedule)-1 and j == len(schedule[0])-1:
                     # print(f"last slot: return slot {i}, {j}")
@@ -201,8 +201,8 @@ def find_open_shift(schedule):
                 # elif schedule[i][j] == 0:
                 #     # print(f"Replacing 0 with None at {i}, {j} in loop")
                 #     schedule[i][j] = None
-                elif schedule[i][j] == 0:
-                    print(f"Empty shift at {i} {j}.\n")
+                if schedule[i][j] == 0:
+                    #print(f"Empty shift at {i} {j}.\n")
                     return (i, j)
                 
                 # IMPORTANT: if schedule has been previously seen and skipped because 
@@ -219,7 +219,7 @@ def find_open_shift(schedule):
 
 def solve_schedule(m):
     
-    print("Finding open shift...")
+    #print("Finding open shift...")
     avail_col = find_open_shift(m)
     if not avail_col:
         print("\t\t---------------------  All shifts filled! Scheduling complete!!!  ----------------------\n\n")
@@ -231,7 +231,7 @@ def solve_schedule(m):
         _, c = avail_col
 
     for e in range(len(m)):
-        print(f"checking if {e}, {c} is valid...")       
+        #print(f"checking if {e}, {c} is valid...")       
         val = is_valid(m,e,c)
         if not val:
             m[e][c] = 0
