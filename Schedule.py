@@ -213,7 +213,7 @@ def find_open_shift(schedule):
         # reset slots that were passed over due to unavailability to None
 
         #reset_zeros(schedule, j)
-        
+
     return False
 
 
@@ -267,3 +267,4 @@ def solve_schedule(m):
 reformat_matrix(schedule)
 solve_schedule(schedule)
 print_matrix()
+###################################################################################
