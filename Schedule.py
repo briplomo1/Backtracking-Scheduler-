@@ -10,7 +10,7 @@ schedule = [
 ]
  # Constants- employees needed for each shift minimum and maximum
  ##############################  Problems with multiple employees needed ###########################
-MaxEmployeesPerShift = [1,1,1,1]
+MaxEmployeesPerShift = [1,3,1,1]
 NumberOfEmployees = len(schedule)
 conflict = []
 
@@ -21,23 +21,23 @@ employees = [
     {
         'id':1,
         'availability':[
-            True, False, True, True,
+            True, True, False, True,
             False, False, False, False,
-            False, False, False, False,
+            False, True, False, False,
             False, False, False, False,
             False, True, True, False,
             True, True, False, True,
         ],
         'doubles': False,
         'lvn': False,
-        'max': 20
+        'max': 40
     },
     {
         'id':2,
         'availability':[
-            False, False,True, True,
+            False, True, False, False,
             False, False, True, True,
-            False, False, False, False, 
+            False, True, False, False, 
             False, False, True, True,
             False, False, True, True,
             False, False, True, False, 
@@ -49,9 +49,9 @@ employees = [
     {
         'id':3,
         'availability':[
+            True, False, True, False,
             True, True, False, False,
-            True, True, False, False,
-            False, False, False, False,
+            False, False, True, False,
             True, True, False, False,
             True, True, True, False,
             True, True, False, False,
@@ -79,7 +79,7 @@ employees = [
         'availability':[
             True, False, False, True,
             False, False, False, False,
-            False, False, False, True,
+            True, False, False, True,
             False, False, False, False,
             False, False, False, False,
             True, True, False, False,
@@ -91,7 +91,7 @@ employees = [
     {
         'id':6,
         'availability':[
-            True, False, False, False,
+            True, True, False, False,
             True, True, False, False,
             True, True, True, True,
             False, False, False, False,
@@ -100,7 +100,7 @@ employees = [
         ],
         'doubles': True,
         'lvn': False,
-        'max' : 20,
+        'max' : 8,
     },
 
 ]
@@ -122,20 +122,18 @@ def reformat_matrix(schedule):
                 schedule[row][col] = 0
     print_matrix()
 
-def handle_conflict(x,y):
+def log_conflict(y):
     global conflict
-    conflict.append(x)
     conflict.append(y)
-    print(conflict)
-    conflict.clear()
+
+def resolve_conflict():
+    global conflict
+    if len(conflict) >0:
+        conflict.clear()
 
 def is_column_not_full(col):
-    total_in_col = 0;
-    for e in (schedule):
-        if e[col] is not None:
-            total_in_col += e[col]
-    print(total_in_col)
-    if total_in_col < MaxEmployeesPerShift[col%4]:
+    total_in_col = get_col_hours(col)
+    if total_in_col/4 < MaxEmployeesPerShift[col%4]:
         return True
     return False
 
@@ -146,7 +144,7 @@ def get_row_hours(m, e):
             hours += m[e][i]
     return hours
 
-def get_col_hours(schedule, j):
+def get_col_hours(j):
     hours = 0
     for e in range(len(schedule)):
         if schedule[e][j] is not None:
@@ -156,7 +154,7 @@ def get_col_hours(schedule, j):
 def reset_zeros(m, col):
     for e in range(len(m)):
         if m[e][col] == 0:
-            # print(f"Replacing 0 with None at {e}, {j}")
+            print(f"Replacing 0 with None at {e}, {col}")
             m[e][col] = None
 reformat_matrix(schedule)
 ############################################## MAIN FUNCTIONS ###########################################
@@ -169,11 +167,16 @@ def is_valid(m, e, shift): # works with an open shift index and employee index v
     if current_hours >= employees[e]['max']:
         print(f"This employee has {current_hours} and has reached his max. Invalid...")
         return False
-
     # If employee is not available for that shift return False
     elif not employees[e]['availability'][shift]:
         print(f"Employee {e} is not available for shift {shift}. Invalid...")
         return False
+    # If employee is already scheduled that shift return Flase
+    elif m[e][shift] > 0:
+        print(f"Employee {e} is already scheduled for this shift...")
+        return 2
+    
+    
     # if employee hours sum to 8 already have to check that employee can work doubles.
         # if employee can work doubles then schedule for additional shift.
         # Set variable of worked double to true. Work double variable resets at each employee.
@@ -184,26 +187,32 @@ def is_valid(m, e, shift): # works with an open shift index and employee index v
     else:
         return True
 
-# finds available shift returns false if all shifts are full
+# finds available shift returns false if all shifts are full or returns column index
 def find_open_shift(schedule):
-    for j in range(len(schedule[0])): # for each shift
+    for j in range(len(schedule[0])):
         # Get all empoyee hours currently scheduled for that column
-        hours_for_shift = get_col_hours(schedule, j)
+        # hours_for_shift = get_col_hours(schedule, j)
+        # print(f"Checking  col {j}...")
 
-        # check if hours for shifts are at max
-        if hours_for_shift/4 < MaxEmployeesPerShift[j%4]:
-            for i in range(len(schedule)):# for employee
-                #print(f"Checking row {i} col {j}...")
-                # Check if find available shift. Return index of shift
-                if i == len(schedule)-1 and j == len(schedule[0])-1:
-                    # print(f"last slot: return slot {i}, {j}")
-                    return (i, j)
+        # check if hours for shifts are at max. If not, return column.
+        #if hours_for_shift/4 < MaxEmployeesPerShift[j%4]:
+        if is_column_not_full(j):
+            print(f"returning col {j}")
+            return 1,j
+
+        # elif schedule[len(schedule[j])][j] == 0:
+            
+        # elif j == len(schedule[0])-1:
+        #     print(f"last col: return slot at end of col {j}")
+        #     return (j)
+
+
                 # elif schedule[i][j] == 0:
                 #     # print(f"Replacing 0 with None at {i}, {j} in loop")
                 #     schedule[i][j] = None
-                if schedule[i][j] == 0:
-                    #print(f"Empty shift at {i} {j}.\n")
-                    return (i, j)
+                # if schedule[i][j] == 0:
+                #     #print(f"Empty shift at {i} {j}.\n")
+                #     return (i, j)
                 
                 # IMPORTANT: if schedule has been previously seen and skipped because 
                 # iteration of employee was unavailable it will be marked as 0.
@@ -216,10 +225,9 @@ def find_open_shift(schedule):
 
     return False
 
-
 def solve_schedule(m):
-    
-    #print("Finding open shift...")
+    global conflict
+    print("Finding open shift...")
     avail_col = find_open_shift(m)
     if not avail_col:
         print("\t\t---------------------  All shifts filled! Scheduling complete!!!  ----------------------\n\n")
@@ -231,17 +239,21 @@ def solve_schedule(m):
         _, c = avail_col
 
     for e in range(len(m)):
-        #print(f"checking if {e}, {c} is valid...")       
+        
+        print(f"checking if {e}, {c} is valid...")       
         val = is_valid(m,e,c)
-        if not val:
+        if val == 2:
+            print("Employee scheduled already...")
+        elif not val:
             m[e][c] = 0
-        if val:
+        elif val:
             print(f"Placing {e} at {c}......\n")
+            resolve_conflict()
             m[e][c] =4
             print_matrix()
             
             if solve_schedule(m):
-                #print("Recurse returned true...")
+                print("Recurse returned true...")
                 return True
                 
             print(f"Removing {e} from {c}.......\n")
@@ -249,11 +261,14 @@ def solve_schedule(m):
             print_matrix()
 
     if is_column_not_full(c):
-        print("Column not filled! Returning false from recursive call")
-        return False
+        log_conflict(c)
+        print(f"Column {c} not filled! Backtracking...")
+        if c != 0:
+            return False
+        else:
+            print("Could not resolve conflict...")
 
-    print(f"\n\nERROR!!! ------------- Could not find availability for column {c}!!!   -------------------\n\n   ::::::::::::::: Ouputting incomplete schedule due to schedule conflict::::::::::::::::::::::")
-    # time.sleep(3)
+    print(f"\n\nERROR!!! -------------  Could not find availability for column {conflict[0]}!!!   -------------------\n\n   ::::::::::::::: Ouputting incomplete schedule due to schedule conflict::::::::::::::::::::::")
     reformat_matrix(schedule)
    
     print("  --------------- Scheduler must manually make changes to schedule OR change employee availability  -------------------------\n\n")
@@ -266,5 +281,5 @@ def solve_schedule(m):
 
 reformat_matrix(schedule)
 solve_schedule(schedule)
-print_matrix()
+# print_matrix()
 ###################################################################################
