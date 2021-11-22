@@ -1,43 +1,30 @@
 import time
+import sys
+from my_exceptions import NoAvailabilityException
 
-schedule = [
-    [None, None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None],
-    [None, None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None],
-    [None, None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None],
-    [None, None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None],
-    [None, None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None],
-    [None, None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None,None]
-]
- # Constants- employees needed for each shift minimum and maximum
- ##############################  Problems with multiple employees needed ###########################
-MaxEmployeesPerShift = [1,1,1,1]
-NumberOfEmployees = len(schedule)
-conflict = []
-
-print(f'Number of employees: {NumberOfEmployees}')
-
+sys.setrecursionlimit(2000)
 
 employees = [
     {
         'id':1,
         'availability':[
-            True, False, True, True,
-            False, False, False, False,
-            False, False, False, False,
+            True, True, False, True,
+            True, False, False, False,
+            False, True, False, False,
             False, False, False, False,
             False, True, True, False,
-            True, True, False, True,
+            True, True, False, False,
         ],
         'doubles': False,
         'lvn': False,
-        'max': 20
+        'max': 4
     },
     {
         'id':2,
         'availability':[
-            False, False,True, True,
+            True, False, False, False,
             False, False, True, True,
-            False, False, False, False, 
+            False, True, False, False, 
             False, False, True, True,
             False, False, True, True,
             False, False, True, False, 
@@ -49,9 +36,9 @@ employees = [
     {
         'id':3,
         'availability':[
+            False, True, True, False,
             True, True, False, False,
-            True, True, False, False,
-            False, False, False, False,
+            False, True, True, False,
             True, True, False, False,
             True, True, True, False,
             True, True, False, False,
@@ -63,7 +50,7 @@ employees = [
     {
         'id':4,
         'availability':[
-            True, False, True, True,
+            False, False, True, True,
             True, True, True, True,
             False, False, False, False,
             True, True, True, True,
@@ -77,21 +64,21 @@ employees = [
     {
         'id':5,
         'availability':[
+            True, True, False, True,
+            False, False, False, False,
             True, False, False, True,
-            False, False, False, False,
-            False, False, False, True,
-            False, False, False, False,
+            True, False, False, False,
             False, False, False, False,
             True, True, False, False,
         ],
         'doubles': False,
         'lvn': False,
-        'max' : 20,
+        'max' : 40,
     },
     {
         'id':6,
         'availability':[
-            True, False, False, False,
+            True, True, False, False,
             True, True, False, False,
             True, True, True, True,
             False, False, False, False,
@@ -100,20 +87,36 @@ employees = [
         ],
         'doubles': True,
         'lvn': False,
-        'max' : 20,
+        'max' : 40,
     },
 
 ]
 
 
+schedule = []
+ # Constants- employees needed for each shift minimum and maximum
+# 4 shifts per day. Employees needed per shift
+MaxEmployeesPerShift = [2,2,2,1]
+NumberOfEmployees = len(employees)
+NumberOfShifts = 24
+
+
+
+
 ############################   HELPER FUNCTIONS #############################################
+def initiate_sched(emps, shifts, m):
+    for e in range(emps):
+        r = []
+        for i in range(shifts):
+            r.append(0)
+        m.append(r)
 
 def print_matrix():
-    print("\n\n")
+    print("\n")
     print("\t\t\t\t |  Monday  |  Tuesday  | Wednesday | Thursday  |  Friday   | Saturday  |")
     for row in range(len(schedule)):
         print("\t\t\t\t",schedule[row])
-    print("\n\n")
+    print("\n")
 
 def reformat_matrix(schedule):
     for row in range(len(schedule)):
@@ -122,20 +125,9 @@ def reformat_matrix(schedule):
                 schedule[row][col] = 0
     print_matrix()
 
-def handle_conflict(x,y):
-    global conflict
-    conflict.append(x)
-    conflict.append(y)
-    print(conflict)
-    conflict.clear()
-
-def is_column_not_full(col):
-    total_in_col = 0;
-    for e in (schedule):
-        if e[col] is not None:
-            total_in_col += e[col]
-    print(total_in_col)
-    if total_in_col < MaxEmployeesPerShift[col%4]:
+def is_column_not_full(col, m):
+    total_in_col = get_col_hours(col, m)
+    if total_in_col/4 < MaxEmployeesPerShift[col%4]:
         return True
     return False
 
@@ -146,80 +138,73 @@ def get_row_hours(m, e):
             hours += m[e][i]
     return hours
 
-def get_col_hours(schedule, j):
+def get_col_hours(j, schedule):
     hours = 0
     for e in range(len(schedule)):
         if schedule[e][j] is not None:
             hours += schedule[e][j]
     return hours
 
-def reset_zeros(m, col):
-    for e in range(len(m)):
-        if m[e][col] == 0:
-            # print(f"Replacing 0 with None at {e}, {j}")
-            m[e][col] = None
-reformat_matrix(schedule)
+def no_availability(m):
+    #print(f"Checking availability for col {col}")
+    for col in range(len(m[0])):
+        for emp in range(len(employees)):
+            if employees[emp]['availability'][col]:
+                break
+            elif emp == len(employees)-1:
+                print(f"No availability for col {col}")
+                return col+1
+
+    return False
+
+def not_enough_staff():
+    for shift in range(NumberOfShifts):
+        needed = MaxEmployeesPerShift[shift%4]
+        scheduled = 0
+        for e in range(NumberOfEmployees):
+            if employees[e]['availability'][shift]:
+                scheduled += 1
+        print(scheduled)
+        if needed > scheduled:
+            # print(f"Not enough scheduled {shift}, {scheduled}")
+            return shift+1
+    return False
 ############################################## MAIN FUNCTIONS ###########################################
 
 def is_valid(m, e, shift): # works with an open shift index and employee index value from schedule
     #Get total curent employee hours
     current_hours = get_row_hours(m, e);
     # If current hours is at or over max hours for employee return false
-    print(f"Checking ({e}, {shift})")
+    #print(f"Checking ({e}, {shift})")
     if current_hours >= employees[e]['max']:
-        print(f"This employee has {current_hours} and has reached his max. Invalid...")
+        #print(f"This employee has {current_hours} and has reached his max. Invalid...")
         return False
-
     # If employee is not available for that shift return False
     elif not employees[e]['availability'][shift]:
-        print(f"Employee {e} is not available for shift {shift}. Invalid...")
+        #print(f"Employee {e} is not available for shift {shift}. Invalid...")
         return False
-    # if employee hours sum to 8 already have to check that employee can work doubles.
-        # if employee can work doubles then schedule for additional shift.
-        # Set variable of worked double to true. Work double variable resets at each employee.
-        # Needs attentioon to account for 12 vs 16 hr hifts!!!!!!
-        # May split day into 3 shifts one 8 am and two 4hr pm shifts
-    # If 4 hours havent passed since employee was last scheduled
-    # else return 2
+    # If employee is already scheduled that shift return Flase
+    elif m[e][shift] > 0:
+        #print(f"Employee {e} is already scheduled for this shift...")
+        return 2
+
     else:
         return True
 
-# finds available shift returns false if all shifts are full
-def find_open_shift(schedule):
-    for j in range(len(schedule[0])): # for each shift
-        # Get all empoyee hours currently scheduled for that column
-        hours_for_shift = get_col_hours(schedule, j)
+# finds available shift returns false if all shifts are full or returns column index
+def find_open_shift(m):
+    for j in range(len(m[0])):
+        # check if hours for shifts are at max. If not, return column.
+        if is_column_not_full(j, m):
+            #print(f"returning col {j}")
+            return 1,j
 
-        # check if hours for shifts are at max
-        if hours_for_shift/4 < MaxEmployeesPerShift[j%4]:
-            for i in range(len(schedule)):# for employee
-                print(f"Checking row {i} col {j}...")
-                # Check if find available shift. Return index of shift
-                if i == len(schedule)-1 and j == len(schedule[0])-1:
-                    # print(f"last slot: return slot {i}, {j}")
-                    return (i, j)
-                # elif schedule[i][j] == 0:
-                #     # print(f"Replacing 0 with None at {i}, {j} in loop")
-                #     schedule[i][j] = None
-                elif schedule[i][j] == 0:
-                    print(f"Empty shift at {i} {j}.\n")
-                    return (i, j)
-                
-                # IMPORTANT: if schedule has been previously seen and skipped because 
-                # iteration of employee was unavailable it will be marked as 0.
-                # any 0 will be turned to None to be considered as open shift for next employee iterated
-        # elif hours_for_shift/4 == MaxEmployeesPerShift[j%4]:
-          #  print(f"Max employees needed for shift {j} reached: ", hours_for_shift/4, " out of " , MaxEmployeesPerShift[j%4])
-        # reset slots that were passed over due to unavailability to None
 
-        #reset_zeros(schedule, j)
 
     return False
 
-
 def solve_schedule(m):
-    
-    print("Finding open shift...")
+    #print("Finding open shift...")
     avail_col = find_open_shift(m)
     if not avail_col:
         print("\t\t---------------------  All shifts filled! Scheduling complete!!!  ----------------------\n\n")
@@ -231,12 +216,17 @@ def solve_schedule(m):
         _, c = avail_col
 
     for e in range(len(m)):
-        print(f"checking if {e}, {c} is valid...")       
+        
+        #print(f"checking if {e}, {c} is valid...")       
         val = is_valid(m,e,c)
-        if not val:
+        if val == 2:
+            #print("Employee scheduled already...")
+            pass
+        elif not val:
             m[e][c] = 0
-        if val:
-            print(f"Placing {e} at {c}......\n")
+        elif val:
+            # print(f"Placing {e} at {c}......\n")
+    
             m[e][c] =4
             print_matrix()
             
@@ -244,27 +234,38 @@ def solve_schedule(m):
                 #print("Recurse returned true...")
                 return True
                 
-            print(f"Removing {e} from {c}.......\n")
+            #print(f"Removing {e} from {c}.......\n")
             m[e][c] = 0
             print_matrix()
 
-    if is_column_not_full(c):
-        print("Column not filled! Returning false from recursive call")
+    # if column is not full
+    if is_column_not_full(c,m) and c != 0:
+        #print(f"Column {c} not filled! Backtracking...")
+        # if it has not backtracked all the way to the first column it returns zero and backtracks
         return False
 
-    print(f"\n\nERROR!!! ------------- Could not find availability for column {c}!!!   -------------------\n\n   ::::::::::::::: Ouputting incomplete schedule due to schedule conflict::::::::::::::::::::::")
-    # time.sleep(3)
-    reformat_matrix(schedule)
-   
-    print("  --------------- Scheduler must manually make changes to schedule OR change employee availability  -------------------------\n\n")
-    print("                       .....ENDING PROGRAM.....\n\n")
-    print("\nReturning false just cuz...\n")
     return False
 
 
+def solve(m):
+    error = no_availability(m)
+    if not error:
+        error = not_enough_staff()
+    print(error)
+    if error > 0:
+        print_matrix()
+        raise NoAvailabilityException(error)
+        
+    else:
+        solve_schedule(m)
 
 
-reformat_matrix(schedule)
-solve_schedule(schedule)
-print_matrix()
-###################################################################################
+
+initiate_sched(NumberOfEmployees, NumberOfShifts, schedule)
+# reformat_matrix(schedule)
+startT = time.time()
+solve(schedule)
+
+print(time.time()-startT)
+
+###################################################################################################################
